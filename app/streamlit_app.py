@@ -58,13 +58,9 @@ if uploaded_file is not None:
                 analysis_response.raise_for_status()
                 analysis_data = analysis_response.json()
 
-                st.write("DEBUG — API status:", analysis_response.status_code)
-                st.write("DEBUG — API response type:", type(analysis_data).__name__)
-                st.write("DEBUG — API response:", analysis_data)
-
                 st.session_state["analysis"] = analysis_data
                 st.session_state["analysis_filename"] = filename
-                st.session_state["analysis_filename"] = filename
+                st.session_state["analysis_filename"] = filename    
 
                 report_response = httpx.post(
                     f"{api_url}/integrity-report",
