@@ -1,5 +1,6 @@
 
 from fastapi.testclient import TestClient
+import hashlib
 
 from app.main import app
 
@@ -118,3 +119,27 @@ def test_rejects_empty_csv():
     response = upload_csv(b"")
 
     assert response.status_code == 400
+
+
+def test_sha256_matches_uploaded_csv_bytes():
+    response = upload_csv(SAMPLE_CSV)
+
+    assert response.status_code == 200
+    expected_hash = hashlib.sha256(SAMPLE_CSV).hexdigest()
+
+    assert response.json()["sha256"] == expected_hash
+
+
+def test_sha256_changes_when_uploaded_bytes_change():
+    original = SAMPLE_CSV
+    modified = SAMPLE_CSV + b"\n"
+
+    original_response = upload_csv(original)
+    modified_response = upload_csv(modified)
+
+    assert original_response.status_code == 200
+    assert modified_response.status_code == 200
+
+    assert original_response.json()["sha256"] != (
+        modified_response.json()["sha256"]
+    )

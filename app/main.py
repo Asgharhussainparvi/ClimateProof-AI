@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
+import hashlib
 
 app = FastAPI(
     title="ClimateProof AI API",
@@ -49,6 +50,7 @@ class AnalysisResponse(BaseModel):
     anomaly_counts: dict[str, int]
     warnings: list[str]
     note: str
+    sha256: str = ""
 
 
 def analyze_dataframe(
@@ -212,7 +214,7 @@ async def analyze_csv(file: UploadFile = File(...)) -> AnalysisResponse:
         )
 
     content = await file.read(MAX_FILE_BYTES + 1)
-
+    sha256 = hashlib.sha256(content).hexdigest()
     if len(content) > MAX_FILE_BYTES:
         raise HTTPException(
             status_code=413,
@@ -241,10 +243,12 @@ async def analyze_csv(file: UploadFile = File(...)) -> AnalysisResponse:
             status_code=400,
             detail=f"Could not parse CSV: {exc}",
         ) from exc
-
+    
     try:
         result = analyze_dataframe(df, filename=filename)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    result["sha256"] = sha256
 
     return AnalysisResponse(**result)
