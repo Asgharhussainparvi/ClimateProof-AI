@@ -16,7 +16,7 @@ with st.sidebar:
     st.header("Settings")
     api_url = st.text_input(
         "FastAPI Backend URL",
-        value="http://127.0.0.1:8000",
+        value="https://climateproof-ai.onrender.com",
     ).rstrip("/")
 
     st.divider()
