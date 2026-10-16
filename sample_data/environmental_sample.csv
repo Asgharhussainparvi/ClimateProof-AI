@@ -1,0 +1,6 @@
+timestamp,location,temperature_c,humidity_pct,pm25,source_id
+2026-10-01T10:00:00Z,Skardu,18.5,42,12.1,sensor-01
+2026-10-01T11:00:00Z,Skardu,19.0,40,13.0,sensor-01
+2026-10-01T12:00:00Z,Skardu,21.0,38,14.0,sensor-01
+2026-10-01T13:00:00Z,Skardu,20.0,39,15.0,sensor-01
+2026-10-01T14:00:00Z,Skardu,19.5,40,65.0,sensor-01
