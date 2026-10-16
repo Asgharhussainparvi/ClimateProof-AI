@@ -60,6 +60,17 @@ class VerificationResponse(BaseModel):
     verified: bool
     note: str
 
+
+class IntegrityReport(BaseModel):
+    report_version: str
+    filename: str
+    dataset: dict[str, Any]
+    integrity: dict[str, Any]
+    quality: dict[str, Any]
+    warnings: list[str]
+    limitations: list[str]
+
+
 def analyze_dataframe(
     df: pd.DataFrame,
     filename: str = "dataset.csv",
@@ -312,4 +323,95 @@ async def verify_csv(
             if verified
             else "The uploaded file bytes do not match the expected hash."
         ),
+    )
+
+
+@app.post("/integrity-report", response_model=IntegrityReport)
+async def integrity_report(
+    file: UploadFile = File(...),
+) -> IntegrityReport:
+    filename = file.filename or "upload.csv"
+
+    if not filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=415,
+            detail="Only .csv files are supported.",
+        )
+
+    content = await file.read(MAX_FILE_BYTES + 1)
+
+    if len(content) > MAX_FILE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="File exceeds the 5 MiB upload limit.",
+        )
+
+    if not content.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded CSV is empty.",
+        )
+
+    sha256 = hashlib.sha256(content).hexdigest()
+
+    try:
+        df = pd.read_csv(BytesIO(content))
+    except pd.errors.EmptyDataError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV contains no readable columns.",
+        ) from exc
+    except (
+        pd.errors.ParserError,
+        UnicodeDecodeError,
+        ValueError,
+    ) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not parse CSV: {exc}",
+        ) from exc
+
+    try:
+        analysis = analyze_dataframe(df, filename=filename)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    return IntegrityReport(
+        report_version="1.0",
+        filename=filename,
+        dataset={
+            "sha256": sha256,
+            "row_count": analysis["row_count"],
+            "columns": analysis["columns"],
+        },
+        integrity={
+            "fingerprint_algorithm": "SHA-256",
+            "fingerprint_available": True,
+            "verification_status": "not_verified",
+            "verification_note": (
+                "No trusted expected hash was provided. "
+                "The fingerprint identifies these uploaded bytes "
+                "but does not prove their origin or authenticity."
+            ),
+        },
+        quality={
+            "missing_values": analysis["missing_values"],
+            "duplicate_rows": analysis["duplicate_rows"],
+            "invalid_timestamps": analysis["invalid_timestamps"],
+            "invalid_numeric_values": (
+                analysis["invalid_numeric_values"]
+            ),
+            "domain_violations": analysis["domain_violations"],
+            "numeric_summary": analysis["numeric_summary"],
+            "anomaly_counts": analysis["anomaly_counts"],
+        },
+        warnings=analysis["warnings"],
+        limitations=[
+            "Statistical outliers are not proof of fraud.",
+            "Domain violations depend on configured constraints.",
+            "SHA-256 alone does not prove source authenticity.",
+        ],
     )

@@ -181,3 +181,45 @@ def test_verify_csv_rejects_invalid_hash():
     )
 
     assert response.status_code == 422
+
+
+def test_integrity_report_returns_fingerprint_and_quality():
+    response = client.post(
+        "/integrity-report",
+        files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["report_version"] == "1.0"
+    assert body["dataset"]["row_count"] == 5
+    assert body["dataset"]["sha256"] == hashlib.sha256(
+        SAMPLE_CSV
+    ).hexdigest()
+    assert body["integrity"]["verification_status"] == "not_verified"
+    assert body["quality"]["invalid_timestamps"] == 0
+    assert "limitations" in body
+
+
+def test_integrity_report_rejects_non_csv():
+    response = client.post(
+        "/integrity-report",
+        files={"file": ("sample.txt", b"hello", "text/plain")},
+    )
+
+    assert response.status_code == 415
+
+
+def test_integrity_report_rejects_missing_required_columns():
+    csv = (
+        b"timestamp,location,temperature_c\n"
+        b"2026-10-01T10:00:00Z,Skardu,18.5\n"
+    )
+
+    response = client.post(
+        "/integrity-report",
+        files={"file": ("incomplete.csv", csv, "text/csv")},
+    )
+
+    assert response.status_code == 422
