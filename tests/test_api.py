@@ -223,3 +223,54 @@ def test_integrity_report_rejects_missing_required_columns():
     )
 
     assert response.status_code == 422
+
+
+def test_integrity_report_download_returns_json_attachment():
+    response = client.post(
+        "/integrity-report/download",
+        files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/json"
+    )
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="integrity_report.json"'
+    )
+
+    body = response.json()
+
+    assert body["report_version"] == "1.0"
+    assert body["dataset"]["sha256"] == hashlib.sha256(
+        SAMPLE_CSV
+    ).hexdigest()
+    assert body["integrity"]["verification_status"] == "not_verified"
+    assert "quality" in body
+    assert "limitations" in body
+
+
+def test_integrity_report_download_rejects_non_csv():
+    response = client.post(
+        "/integrity-report/download",
+        files={"file": ("sample.txt", b"hello", "text/plain")},
+    )
+
+    assert response.status_code == 415
+
+
+def test_integrity_report_download_rejects_oversized_file():
+    oversized_csv = b"x" * (5 * 1024 * 1024 + 1)
+
+    response = client.post(
+        "/integrity-report/download",
+        files={
+            "file": (
+                "large.csv",
+                oversized_csv,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 413

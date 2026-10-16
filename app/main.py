@@ -11,6 +11,8 @@ from fastapi import FastAPI, File, HTTPException, UploadFile , Form
 from pydantic import BaseModel
 import hashlib
 import hmac
+from fastapi.responses import Response
+
 app = FastAPI(
     title="ClimateProof AI API",
     version="0.2.0",
@@ -414,4 +416,25 @@ async def integrity_report(
             "Domain violations depend on configured constraints.",
             "SHA-256 alone does not prove source authenticity.",
         ],
+    )
+
+
+@app.post("/integrity-report/download")
+async def download_integrity_report(
+    file: UploadFile = File(...),
+) -> Response:
+    # Reuse the existing integrity-report logic.
+    report = await integrity_report(file)
+
+    # Convert the report into readable, formatted JSON.
+    report_json = report.model_dump_json(indent=2)
+
+    return Response(
+        content=report_json,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="integrity_report.json"'
+            )
+        },
     )
