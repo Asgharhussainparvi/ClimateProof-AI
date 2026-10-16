@@ -342,3 +342,18 @@ def test_integrity_report_returns_generic_error_for_invalid_encoding():
         "Could not parse CSV. Check the file format and encoding."
     )
     assert "UnicodeDecodeError" not in response.text
+
+
+def test_reports_blank_location_and_source_id_as_missing():
+    csv = (
+        b"timestamp,location,temperature_c,humidity_pct,pm25,source_id\n"
+        b"2026-10-01T10:00:00Z,,18.5,42,12,\n"
+    )
+
+    response = upload_csv(csv)
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["missing_values"]["location"] == 1
+    assert body["missing_values"]["source_id"] == 1
