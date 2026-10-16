@@ -1,51 +1,156 @@
 # ClimateProof AI
 
-ClimateProof AI is an environmental dataset analysis and integrity-verification project for the IEEE Global ClimateChain Hackathon 2026. Primary track: Climate Data & Environmental Monitoring.
+ClimateProof AI is an environmental dataset analysis and data-integrity verification MVP developed for the IEEE Global ClimateChain Hackathon 2026.
 
-## Milestone 1: CSV analysis API
+**Primary track:** Climate Data & Environmental Monitoring
 
-The API validates a documented CSV schema and returns missing-value counts, duplicate-row count, timestamp/numeric parsing issues, descriptive statistics, and exploratory IQR outlier counts. Statistical outliers are not evidence of fraud or regulatory violations. The included sample is synthetic and is not real-world environmental measurement data.
+The project provides a FastAPI backend and a Streamlit dashboard for uploading environmental CSV datasets, analyzing data quality, verifying file integrity, and downloading integrity reports.
 
-### Required CSV columns
+## Current Features
+
+- CSV upload and schema validation.
+- Missing-value detection, including whitespace-only `location` and `source_id` values.
+- Duplicate-row detection.
+- Invalid timestamp and numeric-value detection.
+- Environmental data checks for humidity and PM2.5.
+- Descriptive statistics and exploratory IQR-based outlier counts.
+- CSV file-integrity verification.
+- Integrity report generation and download.
+- Streamlit dashboard connected to the FastAPI backend.
+- API documentation through Swagger UI.
+
+Statistical outliers are exploratory signals; they do not independently establish fraud, data manipulation, or regulatory violations.
+
+## Required CSV Schema
+
+CSV files must contain these columns:
 
 `timestamp`, `location`, `temperature_c`, `humidity_pct`, `pm25`, `source_id`
 
-### Setup
+Example:
 
-Python 3.11+ is recommended.
+```csv
+timestamp,location,temperature_c,humidity_pct,pm25,source_id
+2026-10-01T10:00:00Z,Skardu,18.5,42,12,station-01
+2026-10-01T11:00:00Z,Skardu,19.1,40,14,station-01
+```
+
+The included sample dataset is synthetic and is not real-world environmental measurement data.
+
+## Requirements
+
+- Python 3.11 or newer recommended.
+- Windows, macOS, or Linux.
+- Dependencies listed in `requirements.txt`.
+
+## Installation
+
+Clone the repository and open its directory:
+
+```bash
+git clone https://github.com/Asgharhussainparvi/ClimateProof-AI.git
+cd ClimateProof-AI
+```
+
+Create and activate a virtual environment.
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+macOS/Linux:
 
 ```bash
 python -m venv .venv
-# Windows PowerShell:
-.venv\Scripts\Activate.ps1
-# macOS/Linux:
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-### Run API
+## Run the Application
+
+The API and Streamlit dashboard run in separate terminals.
+
+### 1. Start the FastAPI backend
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000/docs` for interactive API docs. Health check: `GET /health`. Upload a CSV using `POST /analyze-csv`.
+API base URL:
 
-Example with curl:
+`http://127.0.0.1:8000`
+
+Interactive API documentation:
+
+`http://127.0.0.1:8000/docs`
+
+Health endpoint:
+
+`GET /health`
+
+### 2. Start the Streamlit dashboard
+
+Activate the same virtual environment in a second terminal, then run:
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/analyze-csv" -F "file=@sample_data/environmental_sample.csv"
+streamlit run app/streamlit_app.py
 ```
 
-### Tests
+Open the local URL displayed in the terminal, usually:
+
+`http://localhost:8501`
+
+Ensure the FastAPI backend is running before using dashboard features. The dashboard's API URL defaults to `http://127.0.0.1:8000`.
+
+## API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/health` | Check API health |
+| POST | `/analyze-csv` | Analyze an uploaded CSV |
+| POST | `/verify-csv` | Verify uploaded CSV integrity |
+| POST | `/integrity-report` | Generate an integrity report |
+| POST | `/integrity-report/download` | Download an integrity report |
+
+Refer to `/docs` for the actual request parameters, response schemas, and supported options.
+
+## Run Tests
 
 ```bash
-pytest -q
+python -m pytest -q
 ```
 
-### Current limitations
+## Current Limitations
 
-- Local API only; no Streamlit dashboard, database, LLM, fingerprint registry, or blockchain integration yet.
-- IQR outlier checks are basic exploratory signals and may not suit every environmental variable or distribution.
-- Schema is currently fixed to the six required columns.
-- Upload limit is 5 MiB.
+- The CSV schema is fixed to the six required columns.
+- The upload size limit is 5 MiB.
+- IQR-based outlier detection is exploratory and may not suit every environmental variable or distribution.
+- The sample dataset is synthetic.
+- The current MVP does not include a database, LLM-based analysis, a fingerprint registry, or blockchain integration.
+- File-integrity verification can help detect changes relative to a trusted reference, but does not independently prove that the original measurements are authentic.
+- The application is configured for local development; production deployment requires additional security and operational configuration.
+
+## Project Structure
+
+```text
+ClimateProof-AI/
+├── app/
+│   ├── main.py
+│   └── streamlit_app.py
+├── sample_data/
+├── tests/
+│   └── test_api.py
+├── requirements.txt
+└── README.md
+```
+
+## Development Status
+
+The MVP currently includes a CSV analysis API, an interactive Streamlit dashboard, file-integrity verification, and integrity-report functionality.
+
+Future work may include persistent storage, trusted fingerprint registries, stronger provenance tracking, and blockchain integration.
+
