@@ -12,6 +12,9 @@ from pydantic import BaseModel
 import hashlib
 import hmac
 from fastapi.responses import Response
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="ClimateProof AI API",
@@ -259,9 +262,11 @@ async def analyze_csv(file: UploadFile = File(...)) -> AnalysisResponse:
         UnicodeDecodeError,
         ValueError,
     ) as exc:
+        logger.warning("CSV parsing failed: %s", exc)
+
         raise HTTPException(
             status_code=400,
-            detail=f"Could not parse CSV: {exc}",
+            detail="Could not parse CSV. Check the file format and encoding.",
         ) from exc
     
     try:
@@ -368,9 +373,11 @@ async def integrity_report(
         UnicodeDecodeError,
         ValueError,
     ) as exc:
+        logger.warning("CSV parsing failed: %s", exc)
+
         raise HTTPException(
             status_code=400,
-            detail=f"Could not parse CSV: {exc}",
+            detail="Could not parse CSV. Check the file format and encoding.",
         ) from exc
 
     try:

@@ -309,3 +309,36 @@ def test_integrity_report_rejects_oversized_file():
     )
 
     assert response.status_code == 413
+def test_rejects_csv_with_invalid_encoding():
+    invalid_csv = b"\xff\xfe\xfa\xfb"
+
+    response = upload_csv(invalid_csv)
+
+    assert response.status_code == 400
+
+
+def test_invalid_encoding_returns_generic_error():
+    invalid_csv = b"\xff\xfe\xfa\xfb"
+
+    response = upload_csv(invalid_csv)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Could not parse CSV. Check the file format and encoding."
+    )
+    assert "UnicodeDecodeError" not in response.text
+
+
+def test_integrity_report_returns_generic_error_for_invalid_encoding():
+    invalid_csv = b"\xff\xfe\xfa\xfb"
+
+    response = client.post(
+        "/integrity-report",
+        files={"file": ("invalid.csv", invalid_csv, "text/csv")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Could not parse CSV. Check the file format and encoding."
+    )
+    assert "UnicodeDecodeError" not in response.text
