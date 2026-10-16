@@ -1,7 +1,6 @@
 
 from fastapi.testclient import TestClient
 import hashlib
-
 from app.main import app
 
 client = TestClient(app)
@@ -143,3 +142,42 @@ def test_sha256_changes_when_uploaded_bytes_change():
     assert original_response.json()["sha256"] != (
         modified_response.json()["sha256"]
     )
+
+
+
+def test_verify_csv_matching_hash():
+    expected_hash = hashlib.sha256(SAMPLE_CSV).hexdigest()
+
+    response = client.post(
+        "/verify-csv",
+        files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
+        data={"expected_sha256": expected_hash},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verified"] is True
+    assert body["actual_sha256"] == expected_hash
+
+
+def test_verify_csv_mismatching_hash():
+    expected_hash = hashlib.sha256(b"different file").hexdigest()
+
+    response = client.post(
+        "/verify-csv",
+        files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
+        data={"expected_sha256": expected_hash},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["verified"] is False
+
+
+def test_verify_csv_rejects_invalid_hash():
+    response = client.post(
+        "/verify-csv",
+        files={"file": ("sample.csv", SAMPLE_CSV, "text/csv")},
+        data={"expected_sha256": "not-a-valid-hash"},
+    )
+
+    assert response.status_code == 422

@@ -7,10 +7,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile , Form
 from pydantic import BaseModel
 import hashlib
-
+import hmac
 app = FastAPI(
     title="ClimateProof AI API",
     version="0.2.0",
@@ -52,6 +52,13 @@ class AnalysisResponse(BaseModel):
     note: str
     sha256: str = ""
 
+
+class VerificationResponse(BaseModel):
+    filename: str
+    expected_sha256: str
+    actual_sha256: str
+    verified: bool
+    note: str
 
 def analyze_dataframe(
     df: pd.DataFrame,
@@ -252,3 +259,57 @@ async def analyze_csv(file: UploadFile = File(...)) -> AnalysisResponse:
     result["sha256"] = sha256
 
     return AnalysisResponse(**result)
+
+
+@app.post("/verify-csv", response_model=VerificationResponse)
+async def verify_csv(
+    file: UploadFile = File(...),
+    expected_sha256: str = Form(...),
+) -> VerificationResponse:
+    filename = file.filename or "upload.csv"
+
+    if not filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=415,
+            detail="Only .csv files are supported.",
+        )
+
+    expected_hash = expected_sha256.strip().lower()
+
+    if (
+        len(expected_hash) != 64
+        or any(c not in "0123456789abcdef" for c in expected_hash)
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Expected SHA-256 must contain exactly 64 hexadecimal characters.",
+        )
+
+    content = await file.read(MAX_FILE_BYTES + 1)
+
+    if len(content) > MAX_FILE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="File exceeds the 5 MiB upload limit.",
+        )
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded CSV is empty.",
+        )
+
+    actual_hash = hashlib.sha256(content).hexdigest()
+    verified = hmac.compare_digest(actual_hash, expected_hash)
+
+    return VerificationResponse(
+        filename=filename,
+        expected_sha256=expected_hash,
+        actual_sha256=actual_hash,
+        verified=verified,
+        note=(
+            "The uploaded file bytes match the expected hash."
+            if verified
+            else "The uploaded file bytes do not match the expected hash."
+        ),
+    )
