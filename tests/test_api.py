@@ -274,3 +274,38 @@ def test_integrity_report_download_rejects_oversized_file():
     )
 
     assert response.status_code == 413
+
+
+def test_analyze_csv_rejects_oversized_file():
+    oversized_csv = b"x" * (5 * 1024 * 1024 + 1)
+
+    response = client.post(
+        "/analyze-csv",
+        files={"file": ("large.csv", oversized_csv, "text/csv")},
+    )
+
+    assert response.status_code == 413
+
+
+def test_verify_csv_rejects_oversized_file():
+    oversized_csv = b"x" * (5 * 1024 * 1024 + 1)
+    expected_hash = hashlib.sha256(oversized_csv).hexdigest()
+
+    response = client.post(
+        "/verify-csv",
+        files={"file": ("large.csv", oversized_csv, "text/csv")},
+        data={"expected_sha256": expected_hash},
+    )
+
+    assert response.status_code == 413
+
+
+def test_integrity_report_rejects_oversized_file():
+    oversized_csv = b"x" * (5 * 1024 * 1024 + 1)
+
+    response = client.post(
+        "/integrity-report",
+        files={"file": ("large.csv", oversized_csv, "text/csv")},
+    )
+
+    assert response.status_code == 413
