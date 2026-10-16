@@ -90,6 +90,11 @@ def analyze_dataframe(
 
     frame = df.copy()
 
+    for column in ("location", "source_id"):
+        frame[column] = frame[column].replace(
+            r"^\s*$", pd.NA, regex=True
+        )
+
     missing_values = {
         str(column): int(count)
         for column, count in frame.isna().sum().items()
